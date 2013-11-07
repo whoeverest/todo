@@ -1,0 +1,10 @@
+<div>
+	Text: <input ng-model="text"> <br/>
+	Priority:
+	<select ng-model="priority">
+		<option ng-repeat="priority in priorities">{{priority}}</option>
+	</select>
+	<input type="button" ng-click="update()" value="Save">
+</div>
+
+<a href="#/todos">Back</a>
