@@ -21,26 +21,13 @@ var express = require('express');
 var winston = require('winston');
 var mongoose = require('mongoose');
 
-// var User = require('./models/user');
+var User = require('./models/user');
 var Todo = require('./models/todo');
 
-var todo_model = {
-    id: '123',
-    text: 'something',
-    status: ['active', 'completed', 'deleted'],  // I can mark an entry as completed
-    priority: ['low', 'normal', 'high'],  // Assign priorities and due dates to the entries // 1, 2, 3 in order to be sortable?
-    due: 'date'
-}
-
-var user_model = {
-    id: '123',
-    email: 'asd@gmail.com',
-    password: 'hash(password)',
-
-}
 
 app = express()
-app.use(express.bodyParser());
+app.use(express.json());
+app.use(express.urlencoded());
 app.use(express.cookieParser());
 
 app.use(express.static('frontend'));
@@ -92,30 +79,31 @@ app.delete('/api/todos/:id', function(req, res) {
 
 // As complementary to the last item, one should be able to create users
 // in the system via an interface, probably a signup/register screen
-app.get('/signup', function(req, res) {
-    res.end('<html><form></form></html>') // Or a normal API call?
-})
-
-app.post('/signup', function(req, res) {
-    var email = req.body.username,
+app.post('/api/signup', function(req, res) {
+    var email = req.body.email,
         password = req.body.password;
+    console.log(email, password);
     User.create({ email: email, password: password }, function(err) {
         if (err)
             console.log(err);
-        res.json(400, { status_code: 400, message: err });
+        res.json(200, { message: 'Created new user for ' + email });
     })
 })
 
-app.post('/login', function(req, res) {
+
+app.post('/api/login', function(req, res) {
     var email = req.body.email,
-        pass = req.body.password;
-    if (check_credentials(email, pass)) {
-        var token = start_session(email);
-        res.cookie('Session-Id', token, { maxAge: 60 * 60 * 1000 });
-        res.json({ status_code: 200, message: 'Logged in.'});
-    } else {
-        res.json(403, { status_code: 403, message: 'Login failed.'});
-    }
+        password = req.body.password;
+    User.findOne({ email: email }, function(err, user) {
+        if (err)
+            console.log(err);
+        if (!user)
+            return res.json(403, { message: 'Login failed.' });
+        if (user.password !== password)
+            return res.json(403, { message: 'Login failed.' });
+        res.cookie('Session-Id', '123456');
+        res.json({ message: 'Logged in.'})
+    })
 })
 
 app.post('/logout', function(req, res) {

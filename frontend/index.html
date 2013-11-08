@@ -5,9 +5,22 @@
 	<script src="js/angular-1.2.0rc1.js"></script>
 	<script src="js/angular-route-1.2.0rc1.js"></script>
 	<script src="js/controllers.js"></script>
+	<style type="text/css">
+		table {
+			text-align: left;
+		}
+		table td, table th {
+			padding-right: 15px;
+		}
+	</style>
 </head>
 <body ng-app="TodoApp">
-	<a href="#/todos">Todos</a> <br/><br/>
+	<a href="#/todos">Todos</a>
+	<a href="#/signup">Sign up</a>
+	<a href="#/login">Login</a>
+
+	<br/><br/>
+	
 	<div ng-view></div>
 </body>
 </html>

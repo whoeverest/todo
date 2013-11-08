@@ -1,11 +1,21 @@
 <div ng-controller="TodoCtrl">
-	<table>
-		<tr ng-repeat="todo in todos">
+	<div ng-show="!todos.length">No todos, perhaps create one?</div>
+	<table ng-hide="!todos.length">
+
+		<th>Text</th>
+		<th><a href="" ng-click="predicate='priority'; reverse=!reverse">Priority</a></th>
+		<th><a href="" ng-click="predicate='due_date'; reverse=!reverse">Due Date</a></th>
+
+		<tr ng-repeat="todo in todos | orderBy:predicate:reverse">
 			<td>{{todo.text}}</td>
+			<td>{{todo.priority}}</td>
+			<td>{{todo.due_date | date}}</td>
 			<td><a href="#/todos/edit/{{todo._id}}">Edit</a></td>
-			<td><button ng-click="delete('{{todo._id}}')">Delete</button></td>
+			<td><button ng-click="delete($index)">Delete</button></td>
 		</tr>
 	</table>
 	<br/><br/>
-	New: <input type="text" ng-model="text"> <input type="button" ng-click="new()" value="Submit">
+	<form ng-submit="new()">
+		<input type="text" ng-model="text"> <input type="submit" value="Create">
+	</form>
 </div>

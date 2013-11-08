@@ -11,6 +11,14 @@ app.config(['$routeProvider',
             templateUrl: 'partials/edit.html',
             controller: 'EditTodoCtrl'
         })
+        .when('/signup', {
+            templateUrl: 'partials/signup.html',
+            controller: 'SignupCtrl'
+        })
+        .when('/login', {
+            templateUrl: 'partials/login.html',
+            controller: 'LoginCtrl'
+        })
         .otherwise({
             redirectTo: '/todos'
         })
@@ -18,39 +26,59 @@ app.config(['$routeProvider',
 ])
 
 app.factory('Todos', ['$http', function($http) {
-    var service = {};
+    var TodosModel = {};
 
-    service.all = function(callback) {
+    TodosModel.all = function(callback) {
         return $http.get('/api/todos').success(function(response) {
             callback(response.results);
         });
     }
 
-    service.new = function(options, callback) {
+    TodosModel.new = function(options, callback) {
         $http.post('/api/todos', options).success(function(response) {
             callback(response.new_todo);
         })
     }
 
-    service.delete = function(id, callback) {
+    TodosModel.delete = function(id, callback) {
         $http.delete('/api/todos/' + id).success(function(status) {
             callback(status);
         })
     }
 
-    service.update = function(id, options) {
+    TodosModel.update = function(id, options, callback) {
         $http.put('/api/todos/' + id, options).success(function(status) {
-            console.log(status);
+            callback(status);
         })
     }
 
-    service.one = function(id, callback) {
+    TodosModel.one = function(id, callback) {
         $http.get('/api/todos/' + id).success(function(todo) {
             callback(todo);
         })
     }
 
-    return service;
+    return TodosModel;
+}])
+
+app.factory('Users', ['$http', function($http) {
+    var UsersModel = {};
+
+    UsersModel.create = function(email, password) {
+        $http.post('/api/signup', { email: email, password: password })
+        .success(function(status) {
+            console.log(status);
+        })
+    }
+
+    UsersModel.login = function(email, password) {
+        $http.post('/api/login', { email: email, password: password })
+        .success(function(status) {
+            console.log(status);
+        })
+    }
+
+    return UsersModel;
 }])
 
 app.controller('TodoCtrl', function($scope, Todos) {
@@ -58,17 +86,14 @@ app.controller('TodoCtrl', function($scope, Todos) {
     $scope.new = function() {
         Todos.new({ text: $scope.text }, function(new_todo) {
             $scope.todos.push(new_todo);
+            $scope.text = '';
         })
     }
 
-    $scope.delete = function(id) {
-        Todos.delete(id, function(status) {
-            // for (var i=0; i < $scope.todos.length; i++) {
-            //     if ($scope.todos[i].id = id) {
-            //         $scope.todos.pop(i);
-            //         break;
-            //     }
-            // };
+    $scope.delete = function(i) {
+        var todo = $scope.todos[i];
+        Todos.delete(todo._id, function(status) {
+            $scope.todos.splice(i, 1);
         });
     }
 
@@ -82,25 +107,45 @@ app.controller('TodoCtrl', function($scope, Todos) {
 
 })
 
-app.controller('EditTodoCtrl', function($scope, Todos, $routeParams) {
+app.controller('EditTodoCtrl', function($scope, Todos, $routeParams, $location) {
 
-    $scope.priorities = ['high', 'normal', 'low'];
+    $scope.priorities = [1,2,3];
 
     Todos.one($routeParams.id, function(todo) {
         // I need an 'extend(o1, o2)' function here.
         $scope.text = todo.todo.text;
         $scope.priority = todo.todo.priority;
+        $scope.due_date = todo.todo.due_date;
     })
 
     $scope.update = function() {
         var options = {
             text: $scope.text,
             priority: $scope.priority,
+            due_date: Date.parse($scope.due_date),
         }
 
         Todos.one($routeParams.id, function(todo) {
-            Todos.update($routeParams.id, options);
+            Todos.update($routeParams.id, options, function(status) {
+                $location.path('/todos');
+            });
         })
     }
 
+})
+
+app.controller('SignupCtrl', function($scope, Users) {
+
+    $scope.signup = function() {
+        Users.create($scope.email, $scope.password);
+    }
+
+})
+
+app.controller('LoginCtrl', function($scope, Users) {
+
+    $scope.login = function() {
+        Users.login($scope.email, $scope.password);
+    }
+    
 })
