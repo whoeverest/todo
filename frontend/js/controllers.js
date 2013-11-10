@@ -19,25 +19,37 @@ app.config(['$routeProvider',
             templateUrl: 'partials/login.html',
             controller: 'LoginCtrl'
         })
+        .when('/logout', {
+            templateUrl: 'partials/empty.html', // angular shitiness.
+            controller: 'LogoutCtrl'
+        })
         .otherwise({
             redirectTo: '/todos'
         })
     }
 ])
 
-app.factory('Todos', ['$http', function($http) {
+app.factory('Todos', ['$http', '$q', function($http, $q) {
     var TodosModel = {};
 
-    TodosModel.all = function(callback) {
-        return $http.get('/api/todos').success(function(response) {
-            callback(response.results);
+    TodosModel.all = function() {
+        var deferred = $q.defer();
+        $http.get('/api/todos').success(function(response) {
+            deferred.resolve(response.todos);
+        }).error(function(err) {
+            deferred.reject(err);
         });
+        return deferred.promise;
     }
 
-    TodosModel.new = function(options, callback) {
+    TodosModel.new = function(options) {
+        var deferred = $q.defer();
         $http.post('/api/todos', options).success(function(response) {
-            callback(response.new_todo);
+            deferred.resolve(response.todo);
+        }).error(function(err) {
+            deferred.reject(err);
         })
+        return deferred.promise;
     }
 
     TodosModel.delete = function(id, callback) {
@@ -65,15 +77,21 @@ app.factory('Users', ['$http', function($http) {
     var UsersModel = {};
 
     UsersModel.create = function(email, password) {
-        $http.post('/api/signup', { email: email, password: password })
+        $http.post('/noauth/api/signup', { email: email, password: password })
         .success(function(status) {
             console.log(status);
         })
     }
 
     UsersModel.login = function(email, password) {
-        $http.post('/api/login', { email: email, password: password })
+        $http.post('/noauth/api/login', { email: email, password: password })
         .success(function(status) {
+            console.log(status);
+        })
+    }
+
+    UsersModel.logout = function() {
+        $http.post('/api/logout').success(function(status) {
             console.log(status);
         })
     }
@@ -83,10 +101,16 @@ app.factory('Users', ['$http', function($http) {
 
 app.controller('TodoCtrl', function($scope, Todos) {
 
+    // $scope.predicate = 'due_date';
+    // $scope.reverse = false;
+
     $scope.new = function() {
-        Todos.new({ text: $scope.text }, function(new_todo) {
-            $scope.todos.push(new_todo);
+        Todos.new({ text: $scope.text }).then(function(todo) {
+            $scope.todos.push(todo);
             $scope.text = '';
+            console.log(todo)
+        }, function(err) {
+            $scope.error = err;
         })
     }
 
@@ -101,8 +125,10 @@ app.controller('TodoCtrl', function($scope, Todos) {
         Todos.update(id, { text: $scope.edit_text });
     }
     
-    Todos.all(function(results) {
-        $scope.todos = results;
+    Todos.all().then(function(data) {
+        $scope.todos = data;
+    }, function(err) {
+        $scope.error = err;
     })
 
 })
@@ -148,4 +174,12 @@ app.controller('LoginCtrl', function($scope, Users) {
         Users.login($scope.email, $scope.password);
     }
     
+})
+
+app.controller('LogoutCtrl', function($location, Users) {
+    console.log('here');
+    Users.logout(function(status) {
+        console.log(status);
+        $location.path('/login');
+    })
 })
