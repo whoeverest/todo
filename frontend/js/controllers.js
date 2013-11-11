@@ -52,22 +52,38 @@ app.factory('Todos', ['$http', '$q', function($http, $q) {
         return deferred.promise;
     }
 
-    TodosModel.delete = function(id, callback) {
-        $http.delete('/api/todos/' + id).success(function(status) {
-            callback(status);
+    TodosModel.delete = function(id) {
+        var deferred = $q.defer();
+        $http.delete('/api/todos/' + id).success(function() {
+            deferred.resolve();
+        }).error(function(err) {
+            deferred.reject(err);
         })
+        return deferred.promise;
     }
 
-    TodosModel.update = function(id, options, callback) {
-        $http.put('/api/todos/' + id, options).success(function(status) {
-            callback(status);
+    TodosModel.update = function(id, options) {
+        if (options._id)
+            // Mongo doesn't allow us to modify the id.
+            new_options = angular.copy(options);
+            delete new_options._id;
+        var deferred = $q.defer();
+        $http.put('/api/todos/' + id, new_options).success(function(response) {
+            deferred.resolve(response.todo);
+        }).error(function(err) {
+            deferred.reject(err);
         })
+        return deferred.promise;
     }
 
-    TodosModel.one = function(id, callback) {
-        $http.get('/api/todos/' + id).success(function(todo) {
-            callback(todo);
+    TodosModel.one = function(id) {
+        var deferred = $q.defer();
+        $http.get('/api/todos/' + id).success(function(response) {
+            deferred.resolve(response.todo);
+        }).error(function(err) {
+            deferred.reject(err);
         })
+        return deferred.promise;
     }
 
     return TodosModel;
@@ -101,28 +117,34 @@ app.factory('Users', ['$http', function($http) {
 
 app.controller('TodoCtrl', function($scope, Todos) {
 
-    // $scope.predicate = 'due_date';
-    // $scope.reverse = false;
+    $scope.predicate = 'priority';
+    $scope.reverse = true;
 
     $scope.new = function() {
         Todos.new({ text: $scope.text }).then(function(todo) {
             $scope.todos.push(todo);
             $scope.text = '';
-            console.log(todo)
         }, function(err) {
             $scope.error = err;
         })
     }
 
-    $scope.delete = function(i) {
-        var todo = $scope.todos[i];
-        Todos.delete(todo._id, function(status) {
-            $scope.todos.splice(i, 1);
+    $scope.delete = function(todo) {
+        Todos.delete(todo._id).then(function(status) {
+            $scope.todos = $scope.todos.filter(function(el) {
+                return el._id !== todo._id;
+            })
+        }, function(err) {
+            $scope.error = err;
         });
     }
 
-    $scope.update = function(id) {
-        Todos.update(id, { text: $scope.edit_text });
+    $scope.update = function(todo) {
+        Todos.update(todo._id, todo).then(function(todo) {
+            // pass
+        }, function(err) {
+            $scope.error = err;
+        });
     }
     
     Todos.all().then(function(data) {
@@ -133,31 +155,24 @@ app.controller('TodoCtrl', function($scope, Todos) {
 
 })
 
-app.controller('EditTodoCtrl', function($scope, Todos, $routeParams, $location) {
+app.controller('EditTodoCtrl', function($scope, $routeParams, $location, Todos) {
 
     $scope.priorities = [1,2,3];
+    $scope.todo = {};
 
-    Todos.one($routeParams.id, function(todo) {
-        // I need an 'extend(o1, o2)' function here.
-        $scope.text = todo.todo.text;
-        $scope.priority = todo.todo.priority;
-        $scope.due_date = todo.todo.due_date;
+    Todos.one($routeParams.id).then(function(todo) {
+        angular.extend($scope.todo, todo);
+    }, function(err) {
+        $scope.error = err;
     })
 
     $scope.update = function() {
-        var options = {
-            text: $scope.text,
-            priority: $scope.priority,
-            due_date: Date.parse($scope.due_date),
-        }
-
-        Todos.one($routeParams.id, function(todo) {
-            Todos.update($routeParams.id, options, function(status) {
-                $location.path('/todos');
-            });
-        })
+        Todos.update($routeParams.id, $scope.todo).then(function(status) {
+            $location.path('/todos');
+        }, function(err) {
+            $scope.error = err;
+        });
     }
-
 })
 
 app.controller('SignupCtrl', function($scope, Users) {
@@ -182,4 +197,11 @@ app.controller('LogoutCtrl', function($location, Users) {
         console.log(status);
         $location.path('/login');
     })
+})
+
+app.filter('priorityName', function() {
+    return function(priority) {
+        var names = { 1: 'low', 2: 'normal', 3: 'high' };
+        return names[priority];
+    }
 })

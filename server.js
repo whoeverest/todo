@@ -16,6 +16,7 @@ So we do expect you to make sure that the app is fully functional and doesn't ha
 */
 var fs = require('fs');
 var path = require('path');
+var https = require('https')
 
 var express = require('express');
 var winston = require('winston');
@@ -23,6 +24,10 @@ var mongoose = require('mongoose');
 
 var User = require('./models/user');
 var Todo = require('./models/todo');
+
+var private_key  = fs.readFileSync('ssl/ssl.key', 'utf8');
+var certificate = fs.readFileSync('ssl/ssl.crt', 'utf8');
+var ssl_options = { key: private_key, cert: certificate };
 
 var config = require('./config');
 
@@ -160,4 +165,6 @@ app.post('/api/logout', function(req, res) {
 })
 
 mongoose.connect('mongodb://localhost/todo_db');
-app.listen(4333) // Make it HTTPS
+
+server = https.createServer(ssl_options, app);
+server.listen(4333);

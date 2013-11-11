@@ -4,16 +4,18 @@
 	<div ng-show="!todos.length">No todos, perhaps create one?</div>
 	<table ng-hide="!todos.length">
 
-		<th>Text</th>
+		<th>&nbsp;</th>
+		<th>&nbsp;</th>
 		<th><a href="" ng-click="predicate='priority'; reverse=!reverse">Priority</a></th>
 		<th><a href="" ng-click="predicate='due_date'; reverse=!reverse">Due Date</a></th>
 
 		<tr ng-repeat="todo in todos | orderBy:predicate:reverse">
-			<td>{{todo.text}}</td>
-			<td>{{todo.priority}}</td>
-			<td>{{todo.due_date | date}}</td>
+			<td><input type="checkbox" ng-model="todo.completed" ng-click="update(todo)"></td>
+			<td>{{ todo.text }}</td>
+			<td>{{ todo.priority | priorityName }}</td>
+			<td>{{ todo.due_date | date }}</td>
 			<td><a href="#/todos/edit/{{todo._id}}"><i class="icon-pencil"></i></a></td>
-			<td><a href="" ng-click="delete($index)"><i class="icon-remove"></i></td>
+			<td><a href="" ng-click="delete(todo)"><i class="icon-remove"></i></td>
 		</tr>
 	</table>
 	<br/><br/>

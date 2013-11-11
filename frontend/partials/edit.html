@@ -1,20 +1,25 @@
+<div ng-show="error" class="alert alert-danger">{{ error.message }}</div>
 <form ng-submit="update()">
 	<table>
 		<tr>
 			<td>Text</td>
-			<td><input type="text" ng-model="text"></td>
+			<td><input type="text" ng-model="todo.text"></td>
 		</tr>
 		<tr>
 			<td>Priority</td>
 			<td>
-				<select ng-model="priority">
-					<option ng-repeat="priority in priorities">{{priority}}</option>
+				<select ng-model="todo.priority">
+					<option ng-repeat="priority in priorities">{{ priority }}</option>
 				</select>
 			</td>
 		</tr>
 		<tr>
 			<td>Due Date</td>
-			<td><input type="text" ng-model="due_date"></td>
+			<td><input type="text" ng-model="todo.due_date"></td>
+		</tr>
+		<tr>
+			<td>Completed</td>
+			<td><input type="checkbox" ng-model="todo.completed"></td>
 		</tr>
 		<tr>
 			<td>&nbsp;</td>
