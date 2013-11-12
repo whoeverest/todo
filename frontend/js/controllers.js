@@ -20,7 +20,7 @@ app.config(['$routeProvider',
             controller: 'LoginCtrl'
         })
         .when('/logout', {
-            templateUrl: 'partials/empty.html', // angular shitiness.
+            templateUrl: function(){}, // angular shitiness.
             controller: 'LogoutCtrl'
         })
         .otherwise({

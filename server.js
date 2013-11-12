@@ -8,15 +8,17 @@ Could you write me a todo list management web application where:
  - Minimal UI/UX design is needed. (Bootstrap)
  - I need every client operation done using JavaScript, reloading the page is not an option. (Angular.js)
  - Write a RESTful API which will allow a third-party application to trigger actions on your app (same actions available on the webpage).
- - You need to be able to pass credentials to both the webpage and the API. // user + pass && api_key
+ - You need to be able to pass credentials to both the webpage and the API.
  - As complementary to the last item, one should be able to create users in the system via an interface, probably a signup/register screen.
 
 NOTE: Keep in mind that this is the project that will be used to evaluate your skills.
 So we do expect you to make sure that the app is fully functional and doesn't have any obvious missing pieces.
 */
+
 var fs = require('fs');
 var path = require('path');
-var https = require('https')
+var https = require('https');
+var crypto = require('crypto');
 
 var express = require('express');
 var winston = require('winston');
@@ -24,6 +26,7 @@ var mongoose = require('mongoose');
 
 var User = require('./models/user');
 var Todo = require('./models/todo');
+var helpers = require('./helpers');
 
 var private_key  = fs.readFileSync('ssl/ssl.key', 'utf8');
 var certificate = fs.readFileSync('ssl/ssl.crt', 'utf8');
@@ -35,31 +38,40 @@ app = express();
 app.use(express.json());
 app.use(express.urlencoded());
 app.use(express.cookieParser());
-
+app.use(express.session({ secret: '123asd' }));
 app.use(express.static('frontend'));
 
-var auth = function(req, res, next) {
-    console.log(Date.now(), req.method, req.path);
-    if (req.cookies['Session-Id'] !== '123456')
-        return res.json(403, { message: 'Forbidden.' });
-    next();
+var sessions = {}
+
+var auth =  function(req, res, next) {
+    var session_id = req.cookies['Session-Id'];
+    var api_key = req.query.api_key;
+    
+    if (session_id == undefined && api_key == undefined) {        
+        return res.json(403, { status_code: 403, message: 'Forbidden.' });
+    }
+    
+    if (sessions[session_id]) {
+        req.session.email = sessions[session_id].email;
+        return next();
+    }
+
+    if (api_key) {
+        User.findOne({ api_key: api_key }, function(err, user) {
+            if (err)
+                return helpers.handle_error(err, res);
+            if (!user)
+                return res.json(403, { status_code: 403, message: 'Forbidden.' });
+            req.session.email = user.email;
+            next();
+        })
+    } else {
+        return res.json(403, { status_code: 403, message: 'Forbidden.' });
+    }
 }
 
-var log = function(severity, message) {
-    if (severity == 'error')
-        console.error(message);
-    else
-        console.log(message);
-}
-
-var handle_error = function(err, res) {
-    console.error(err);
-    res.json(500, {
-        status_code: 500,
-        message: 'Something bad happened.'
-    })
-}
-
+app.use('/api', helpers.log);
+app.use('/noauth', helpers.log);
 app.use('/api', auth);
 
 app.get('/', function(req, res) {
@@ -70,9 +82,9 @@ app.get('/', function(req, res) {
 
 // I can have my todo list displayed
 app.get('/api/todos', function(req, res) {
-    Todo.find(function(err, todos) {
+    Todo.find({ owner: req.session.email }, function(err, todos) {
         if (err)
-            return handle_error(err, res);
+            return helpers.handle_error(err, res);
         res.json({
             status_code: 200,
             todos: todos
@@ -84,7 +96,9 @@ app.get('/api/todos', function(req, res) {
 app.get('/api/todos/:id', function(req, res) {
     Todo.findById(req.params.id, function(err, todo) {
         if (err)
-            return handle_error(err, res);
+            return helpers.handle_error(err, res);
+        if (todo.owner !== req.session.email)
+            return res.json(403, { status_code: 403, message: 'Forbidden todo.' });
         res.json({
             status_code: 200,
             todo: todo
@@ -95,9 +109,10 @@ app.get('/api/todos/:id', function(req, res) {
 // ... add
 app.post('/api/todos', function(req, res) {
     var new_todo = new Todo(req.body);
+    new_todo.owner = req.session.email;
     new_todo.save(function(err) {
         if (err)
-            return handle_error(err, res);
+            return helpers.handle_error(err, res);
         res.json({
             code: 200,
             todo: new_todo
@@ -107,9 +122,9 @@ app.post('/api/todos', function(req, res) {
 
 // ... modify
 app.put('/api/todos/:id', function(req, res) {
-    Todo.update({ _id: req.params.id }, { $set: req.body }, function(err, todo) {
+    Todo.update({ _id: req.params.id, owner: req.session.email }, { $set: req.body }, function(err, todo) {
         if (err)
-            return handle_error(err, res);
+            return helpers.handle_error(err, res);
         res.json({
             code: 200,
             todo: todo
@@ -121,7 +136,9 @@ app.put('/api/todos/:id', function(req, res) {
 app.delete('/api/todos/:id', function(req, res) {
     Todo.findById(req.params.id, function(err, todo) {
         if (err)
-            return handle_error(err, res);
+            return helpers.handle_error(err, res);
+        if (todo.owner !== req.session.email)
+            return res.json(403, { status_code: 403, message: 'Forbidden todo.' });
         todo.remove();
         res.json({
             code: 200
@@ -151,10 +168,15 @@ app.post('/noauth/api/login', function(req, res) {
             console.log(err);
         if (!user)
             return res.json(403, { message: 'Login failed.' });
-        if (user.password !== password)
+        if (!user.compare_password(password))
             return res.json(403, { message: 'Login failed.' });
-        res.cookie('Session-Id', '123456');
-        res.json({ message: 'Logged in.'})
+        var new_session_id = helpers.generate_id();
+        sessions[new_session_id] = { email: email };
+        res.cookie('Session-Id', new_session_id, { httpOnly: true, secure: true });
+        res.json({
+            status_code: 200,
+            message: 'Logged in.'
+        })
     })
 })
 
