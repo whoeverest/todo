@@ -24,7 +24,7 @@ app.config(['$routeProvider',
             controller: 'LogoutCtrl'
         })
         .otherwise({
-            redirectTo: '/todos'
+            redirectTo: '/login'
         })
     }
 ])
@@ -63,10 +63,12 @@ app.factory('Todos', ['$http', '$q', function($http, $q) {
     }
 
     TodosModel.update = function(id, options) {
-        if (options._id)
+        if (options._id) {
             // Mongo doesn't allow us to modify the id.
             new_options = angular.copy(options);
             delete new_options._id;
+        }
+
         var deferred = $q.defer();
         $http.put('/api/todos/' + id, new_options).success(function(response) {
             deferred.resolve(response.todo);
@@ -89,27 +91,39 @@ app.factory('Todos', ['$http', '$q', function($http, $q) {
     return TodosModel;
 }])
 
-app.factory('Users', ['$http', function($http) {
+app.factory('Users', ['$http', '$q',function($http, $q) {
     var UsersModel = {};
 
     UsersModel.create = function(email, password) {
-        $http.post('/noauth/api/signup', { email: email, password: password })
-        .success(function(status) {
-            console.log(status);
+        var deferred = $q.defer();
+        $http.post('/noauth/api/users', { email: email, password: password })
+        .success(function(response) {
+            deferred.resolve(response);
+        }).error(function(err) {
+            deferred.reject(err);
         })
+        return deferred.promise;
     }
 
     UsersModel.login = function(email, password) {
+        var deferred = $q.defer();
         $http.post('/noauth/api/login', { email: email, password: password })
-        .success(function(status) {
-            console.log(status);
+        .success(function(response) {
+            deferred.resolve(response);
+        }).error(function(err) {
+            deferred.reject(err);
         })
+        return deferred.promise;
     }
 
     UsersModel.logout = function() {
-        $http.post('/api/logout').success(function(status) {
-            console.log(status);
+        var deferred = $q.defer();
+        $http.post('/api/logout').success(function(response) {
+            deferred.resolve(response);
+        }).error(function(err) {
+            deferred.reject(err);
         })
+        return deferred.promise;
     }
 
     return UsersModel;
@@ -175,20 +189,24 @@ app.controller('EditTodoCtrl', function($scope, $routeParams, $location, Todos) 
     }
 })
 
-app.controller('SignupCtrl', function($scope, Users) {
-
+app.controller('SignupCtrl', function($scope, $location, Users) {
     $scope.signup = function() {
-        Users.create($scope.email, $scope.password);
+        Users.create($scope.email, $scope.password).then(function(response) {
+            $location.path('/login');
+        }, function(err) {
+            $scope.error = err;
+        });
     }
-
 })
 
-app.controller('LoginCtrl', function($scope, Users) {
-
+app.controller('LoginCtrl', function($scope, $location, Users) {
     $scope.login = function() {
-        Users.login($scope.email, $scope.password);
-    }
-    
+        Users.login($scope.email, $scope.password).then(function(response) {
+            $location.path('/todos');
+        }, function(err) {
+            $scope.error = err;
+        });
+    } 
 })
 
 app.controller('LogoutCtrl', function($location, Users) {

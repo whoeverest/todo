@@ -8,7 +8,7 @@ var UserSchema = new mongoose.Schema({
 	email: { type: String, required: true, index: { unique: true }},
 	password: { type: String, required: true },
 	salt: { type: String },
-	api_key: { type: String, index: { unique: true }}
+	api_key: { type: String }
 })
 
 UserSchema.path('email').validate(validators.isEmail, 'Invalid email');

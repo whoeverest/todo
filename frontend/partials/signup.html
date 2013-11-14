@@ -1,6 +1,7 @@
+<div ng-show="error" class="alert alert-danger">{{ error.message }}</div>
 <form ng-submit="signup()">
 	<table>
-		<tr> <td>Email</td> <td><input type="text" ng-model="email"></td> </tr>
+		<tr> <td>Email</td> <td><input type="email" ng-model="email"></td> </tr>
 		<tr> <td>Password</td> <td><input type="password" ng-model="password"></td> </tr>
 		<tr> <td>Confirm Password</td> <td><input type="password"></td> </tr>
 		<tr> <td>&nbsp;</td> <td><input type="submit" value="Sign Up" class="btn btn-primary"></td> </tr>

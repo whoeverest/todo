@@ -148,15 +148,29 @@ app.delete('/api/todos/:id', function(req, res) {
 
 // As complementary to the last item, one should be able to create users
 // in the system via an interface, probably a signup/register screen
-app.post('/noauth/api/signup', function(req, res) {
+app.post('/noauth/api/users', function(req, res) {
     var user_data = {
         email: req.body.email,
         password: req.body.password
     }
-    User.create(user_data, function(err) {
+    User.create(user_data, function(err, user) {
         if (err)
-            return res.json(err);
-        res.json(200, { message: 'Created new user for ' + user_data.email });
+            return res.json(500, err);
+        res.json(200, {
+            status_code: 200,
+            message: 'Created new user.',
+            email: user.email,
+            api_key: user.api_key
+        });
+    })
+})
+
+app.delete('/api/users/:email', function(req, res) {
+    User.findOne({ email: req.params.email }, function(err, user) {
+        if (user.email !== req.session.email)
+            return res.json(403, { status_code: 403, message: 'Forbidden user.' });
+        user.remove();
+        res.json({ message: 'okay' });
     })
 })
 
@@ -175,7 +189,9 @@ app.post('/noauth/api/login', function(req, res) {
         res.cookie('Session-Id', new_session_id, { httpOnly: true, secure: true });
         res.json({
             status_code: 200,
-            message: 'Logged in.'
+            message: 'Logged in.',
+            email: user.email,
+            api_key: user.api_key
         })
     })
 })
