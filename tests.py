@@ -17,12 +17,12 @@ class TodoTests(unittest.TestCase):
             'email': 'test_user@gmail.com',
             'password': 'testing123'
         }
-        res = r.post(cls.url + '/noauth/api/users', cls.new_user_details)
+        res = r.post(cls.url + '/api/users', cls.new_user_details)
         cls.new_user_details['api_key'] = json.loads(res.text)['api_key']
         cls.api_query = '?api_key=' + cls.new_user_details['api_key']
 
     def test_login(self):
-        res = r.post(self.url + '/noauth/api/login', self.new_user_details)
+        res = r.post(self.url + '/api/login', self.new_user_details)
         res_data = json.loads(res.text)
         self.assertEqual(res.status_code, 200)
         self.assertEqual(self.new_user_details['email'], res_data['email'])
@@ -68,6 +68,8 @@ class TodoTests(unittest.TestCase):
         self.assertEqual(todo_data['text'], updated_data['text'])
         self.assertEqual(todo_data['priority'], updated_data['priority'])
         self.assertEqual(todo_data['completed'], updated_data['completed'])
+
+    # TODO: add tests that SHOULD fail
 
     @classmethod
     def tearDownClass(cls):

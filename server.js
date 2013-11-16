@@ -16,16 +16,18 @@ So we do expect you to make sure that the app is fully functional and doesn't ha
 */
 
 var fs = require('fs');
-var path = require('path');
 var https = require('https');
-var crypto = require('crypto');
 
 var express = require('express');
-var winston = require('winston');
+var MongoStore = require('connect-mongo')(express);
 var mongoose = require('mongoose');
 
-var User = require('./models/user');
-var Todo = require('./models/todo');
+var auth = require('./controllers/auth');
+var controllers = {
+    todo: require('./controllers/todo'),
+    user: require('./controllers/user'),
+}
+
 var helpers = require('./helpers');
 
 var private_key  = fs.readFileSync('ssl/ssl.key', 'utf8');
@@ -35,172 +37,53 @@ var ssl_options = { key: private_key, cert: certificate };
 var config = require('./config');
 
 app = express();
+app.use(helpers.log);
+app.use(express.static('frontend'));
 app.use(express.json());
 app.use(express.urlencoded());
 app.use(express.cookieParser());
-app.use(express.session({ secret: '123asd' }));
-app.use(express.static('frontend'));
+app.use(express.session({
+    secret: 'O8gu2odaivgp8u2owg842urwf2883ufdf24yt6h0',
+    store: new MongoStore({ db: 'todo_db' })
+}));
 
-var sessions = {}
-
-var auth =  function(req, res, next) {
-    var session_id = req.cookies['Session-Id'];
-    var api_key = req.query.api_key;
-    
-    if (session_id == undefined && api_key == undefined) {        
-        return res.json(403, { status_code: 403, message: 'Forbidden.' });
-    }
-    
-    if (sessions[session_id]) {
-        req.session.email = sessions[session_id].email;
-        return next();
-    }
-
-    if (api_key) {
-        User.findOne({ api_key: api_key }, function(err, user) {
-            if (err)
-                return helpers.handle_error(err, res);
-            if (!user)
-                return res.json(403, { status_code: 403, message: 'Forbidden.' });
-            req.session.email = user.email;
-            next();
-        })
-    } else {
-        return res.json(403, { status_code: 403, message: 'Forbidden.' });
-    }
-}
-
-app.use('/api', helpers.log);
-app.use('/noauth', helpers.log);
-app.use('/api', auth);
+// app.use('/api', controllers.auth.is_authenticated);
 
 app.get('/', function(req, res) {
     var html = fs.readFileSync('./frontend/index.html');
-    res.writeHead(200, {'Content-Type': 'text/html'});
+    res.writeHead(200, { 'Content-Type': 'text/html' });
     res.end(html);
-})
+});
 
-// I can have my todo list displayed
-app.get('/api/todos', function(req, res) {
-    Todo.find({ owner: req.session.email }, function(err, todos) {
-        if (err)
-            return helpers.handle_error(err, res);
-        res.json({
-            status_code: 200,
-            todos: todos
-        });
-    })
-})
+app.get('/api/todos',
+    auth.api_key, auth.password,
+    controllers.todo.list_all);
+app.get('/api/todos/:id',
+    auth.api_key, auth.password,
+    controllers.todo.show_one);
+app.post('/api/todos',
+    auth.api_key, auth.password,
+    controllers.todo.new);
+app.put('/api/todos/:id',
+    auth.api_key, auth.password,
+    controllers.todo.edit);
+app.delete('/api/todos/:id',
+    auth.api_key, auth.password,
+    controllers.todo.delete);
 
-// I can manipulate my list ...
-app.get('/api/todos/:id', function(req, res) {
-    Todo.findById(req.params.id, function(err, todo) {
-        if (err)
-            return helpers.handle_error(err, res);
-        if (todo.owner !== req.session.email)
-            return res.json(403, { status_code: 403, message: 'Forbidden todo.' });
-        res.json({
-            status_code: 200,
-            todo: todo
-        })
-    })
-})
-
-// ... add
-app.post('/api/todos', function(req, res) {
-    var new_todo = new Todo(req.body);
-    new_todo.owner = req.session.email;
-    new_todo.save(function(err) {
-        if (err)
-            return helpers.handle_error(err, res);
-        res.json({
-            code: 200,
-            todo: new_todo
-        })
-    })
-})
-
-// ... modify
-app.put('/api/todos/:id', function(req, res) {
-    Todo.update({ _id: req.params.id, owner: req.session.email }, { $set: req.body }, function(err, todo) {
-        if (err)
-            return helpers.handle_error(err, res);
-        res.json({
-            code: 200,
-            todo: todo
-        });
-    })
-})
-
-// ... and remove entries
-app.delete('/api/todos/:id', function(req, res) {
-    Todo.findById(req.params.id, function(err, todo) {
-        if (err)
-            return helpers.handle_error(err, res);
-        if (todo.owner !== req.session.email)
-            return res.json(403, { status_code: 403, message: 'Forbidden todo.' });
-        todo.remove();
-        res.json({
-            code: 200
-        });
-    })
-})
-
-// As complementary to the last item, one should be able to create users
-// in the system via an interface, probably a signup/register screen
-app.post('/noauth/api/users', function(req, res) {
-    var user_data = {
-        email: req.body.email,
-        password: req.body.password
-    }
-    User.create(user_data, function(err, user) {
-        if (err)
-            return res.json(500, err);
-        res.json(200, {
-            status_code: 200,
-            message: 'Created new user.',
-            email: user.email,
-            api_key: user.api_key
-        });
-    })
-})
-
-app.delete('/api/users/:email', function(req, res) {
-    User.findOne({ email: req.params.email }, function(err, user) {
-        if (user.email !== req.session.email)
-            return res.json(403, { status_code: 403, message: 'Forbidden user.' });
-        user.remove();
-        res.json({ message: 'okay' });
-    })
-})
-
-app.post('/noauth/api/login', function(req, res) {
-    var email = req.body.email,
-        password = req.body.password;
-    User.findOne({ email: email }, function(err, user) {
-        if (err)
-            console.log(err);
-        if (!user)
-            return res.json(403, { message: 'Login failed.' });
-        if (!user.compare_password(password))
-            return res.json(403, { message: 'Login failed.' });
-        var new_session_id = helpers.generate_id();
-        sessions[new_session_id] = { email: email };
-        res.cookie('Session-Id', new_session_id, { httpOnly: true, secure: true });
-        res.json({
-            status_code: 200,
-            message: 'Logged in.',
-            email: user.email,
-            api_key: user.api_key
-        })
-    })
-})
-
-app.post('/api/logout', function(req, res) {
-    delete sessions[req.cookies['Session-Id']];
-    res.clearCookie('Session-Id');
-    res.json({ status_code: 200, message: "You're now logged out."});
-})
+app.post('/api/users',
+    controllers.user.new);
+app.delete('/api/users/:email',
+    auth.api_key, auth.password,
+    controllers.user.delete);
+app.post('/api/login',
+    controllers.user.login);
+app.post('/api/logout',
+    auth.api_key, auth.password,
+    controllers.user.logout);
+app.post('/api/new_api_key',
+    auth.password,
+    controllers.user.new_api_key)
 
 mongoose.connect('mongodb://localhost/todo_db');
 

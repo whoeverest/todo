@@ -23,6 +23,10 @@ app.config(['$routeProvider',
             templateUrl: function(){}, // angular shitiness.
             controller: 'LogoutCtrl'
         })
+        .when('/new_api_key', {
+            templateUrl: 'partials/new_api_key.html',
+            controller: 'NewApiKeyCtrl'
+        })
         .otherwise({
             redirectTo: '/login'
         })
@@ -96,7 +100,7 @@ app.factory('Users', ['$http', '$q',function($http, $q) {
 
     UsersModel.create = function(email, password) {
         var deferred = $q.defer();
-        $http.post('/noauth/api/users', { email: email, password: password })
+        $http.post('/api/users', { email: email, password: password })
         .success(function(response) {
             deferred.resolve(response);
         }).error(function(err) {
@@ -107,7 +111,7 @@ app.factory('Users', ['$http', '$q',function($http, $q) {
 
     UsersModel.login = function(email, password) {
         var deferred = $q.defer();
-        $http.post('/noauth/api/login', { email: email, password: password })
+        $http.post('/api/login', { email: email, password: password })
         .success(function(response) {
             deferred.resolve(response);
         }).error(function(err) {
@@ -119,6 +123,16 @@ app.factory('Users', ['$http', '$q',function($http, $q) {
     UsersModel.logout = function() {
         var deferred = $q.defer();
         $http.post('/api/logout').success(function(response) {
+            deferred.resolve(response);
+        }).error(function(err) {
+            deferred.reject(err);
+        })
+        return deferred.promise;
+    }
+
+    UsersModel.new_api_key = function() {
+        var deferred = $q.defer();
+        $http.post('/api/new_api_key').success(function(response) {
             deferred.resolve(response);
         }).error(function(err) {
             deferred.reject(err);
@@ -215,6 +229,12 @@ app.controller('LogoutCtrl', function($location, Users) {
         console.log(status);
         $location.path('/login');
     })
+})
+
+app.controller('NewApiKeyCtrl', function($scope, Users) {
+    $scope.generate_new_api_key = function() {
+        Users.new_api_key()
+    }
 })
 
 app.filter('priorityName', function() {
