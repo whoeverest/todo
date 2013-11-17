@@ -1,0 +1,28 @@
+<div ng-controller="TodoCtrl">
+	<h2>A man's God Todo...</h2>
+	<div ng-show="error" class="alert alert-danger">{{ error.message }}</div>
+	<div ng-show="!todos.length">No todos, perhaps create one?</div>
+	<table ng-hide="!todos.length">
+
+		<th>&nbsp;</th>
+		<th>&nbsp;</th>
+		<th><a href="" ng-click="predicate='priority'; reverse=!reverse">Priority</a></th>
+		<th><a href="" ng-click="predicate='due_date'; reverse=!reverse">Due Date</a></th>
+
+		<tr ng-repeat="todo in todos | orderBy:predicate:reverse">
+			<td><input type="checkbox" ng-model="todo.completed" ng-click="update(todo)"></td>
+			<td>{{ todo.text }}</td>
+			<td>{{ todo.priority | priorityName }}</td>
+			<td>{{ todo.due_date | date }}</td>
+			<td><a href="#/todos/edit/{{todo._id}}"><i class="icon-pencil"></i></a></td>
+			<td><a href="" ng-click="delete(todo)"><i class="icon-remove"></i></td>
+		</tr>
+	</table>
+	<br/><br/>
+	<form ng-submit="new()">
+		<div class="input-append">
+			<input type="text" ng-model="text">
+			<input type="submit" value="Create" class="btn btn-primary">
+		</div>
+	</form>
+</div>

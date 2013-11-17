@@ -1,0 +1,32 @@
+<div ng-show="error" class="alert alert-danger">{{ error.message }}</div>
+<h3>Edit todo</h3>
+<form ng-submit="update()">
+	<table>
+		<tr>
+			<td>Text</td>
+			<td><input type="text" ng-model="todo.text"></td>
+		</tr>
+		<tr>
+			<td>Priority</td>
+			<td>
+				<select ng-model="todo.priority" ng-options="priority | priorityName for priority in priorities">
+					<!-- <option ng-repeat="priority in priorities" value="{{ priority }}">{{ priority | priorityName }}</option> -->
+				</select>
+			</td>
+		</tr>
+		<tr>
+			<td>Due Date</td>
+			<td><input type="date" ng-model="todo.due_date"></td>
+		</tr>
+		<tr>
+			<td>Completed</td>
+			<td><input type="checkbox" ng-model="todo.completed"></td>
+		</tr>
+		<tr>
+			<td>&nbsp;</td>
+			<td><input type="submit" value="Save"></td>
+		</tr>
+	</table>
+</form>
+
+<a href="#/todos">Back</a>

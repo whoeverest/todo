@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>ToDo - Andrej T.</title>
+	<script src="js/angular-1.2.0rc1.js"></script>
+	<script src="js/angular-route-1.2.0rc1.js"></script>
+	<script src="js/controllers.js"></script>
+
+	<link href="css/bootstrap.min.css" rel="stylesheet" media="screen">
+	<style type="text/css">
+		table {
+			text-align: left;
+			width: 100%;
+		}
+		table td, table th {
+			padding-right: 15px;
+		}
+	</style>
+</head>
+<body ng-app="TodoApp">
+
+<div class="navbar navbar-inverse navbar-fixed-top">
+<div class="navbar-inner">
+<div class="container">
+
+<ul class="nav">
+	<li><a href="#/todos">Todos</a></li>
+	<li><a href="#/signup">Sign up</a></li>
+	<li><a href="#/login">Login</a></li>
+	<li><a href="#/logout">Logout</a></li>
+	<li><a href="#/new_api_key">New API key</a></li>
+</ul>
+
+</div>
+</div>
+</div>
+
+<div class="container">
+<div class="row">
+<div class="span8">
+	<!-- Separate the body from the top a bit -->
+	<div style="height: 80px"></div>
+	<div ng-view></div>
+</div>
+</div>
+</div>
+
+</body>
+</html>
